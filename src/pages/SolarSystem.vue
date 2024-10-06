@@ -259,7 +259,7 @@ function startUpdate(): void {
     }
   });
 
-  asteroidLabels.forEach((label) => addLabel(label));
+  asteroidLabels.forEach((label) => addLabel(label.name));
 
   heavenlyBodies.forEach((body) => {
     const n = (2 * Math.PI) / (body.period * 365.25);
