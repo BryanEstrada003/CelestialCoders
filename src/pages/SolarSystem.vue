@@ -12,7 +12,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import Planet from "../components/Planet.vue";
 import venus from "../assets/venus.jpg";
 import mercury from "../assets/mercury.jpg";
-import sunTexture from "../assets/sun.jpg"; // Importar la textura del sol
+import sunTexture from "../assets/sun.jpg";
 import starsTexture from "../assets/stars.jpg";
 import Trajectory from "../components/Trajectory.ts";
 
@@ -30,12 +30,11 @@ const planets: Trajectory[] = [
   new Trajectory("theMoon", 0.15, 5.14, 318.0634, 0.0549006, 125.1228, 0.3),
 ];
 
+// Crear un array vacío para almacenar los objetos Trajectory de asteroides
+let asteroidLabels: Trajectory[] = [];
+
 // Función para calcular la anomalía media (epochMeanAnomaly)
-function calculateMeanAnomaly(
-  epoch_tdb: number,
-  tp_tdb: number,
-  p_yr: number
-): number {
+function calculateMeanAnomaly(epoch_tdb: number, tp_tdb: number, p_yr: number): number {
   const days_per_year = 365.25;
   const P_days = p_yr * days_per_year;
   const delta_t = epoch_tdb - tp_tdb;
@@ -48,233 +47,108 @@ function calculateMeanAnomaly(
   return M;
 }
 
-// Crear un array vacío para almacenar los objetos Trajectory
-let asteroidLabels: Trajectory[] = [];
+// Función para recorrer el archivo JSON y crear los objetos Trajectory para los asteroides
+function fetchAsteroidsFromAPI() {
+  fetch("https://data.nasa.gov/resource/b67r-rgxc.json")
+    .then((response) => response.json())
+    .then((data) => {
+      const trajectories: Trajectory[] = [];
+      data.slice(0, 15).forEach((item: any) => {
+        const name = item.object;
+        const smA = (parseFloat(item.q_au_1) + parseFloat(item.q_au_2)) / 2;
+        const oI = parseFloat(item.i_deg);
+        const aP = parseFloat(item.w_deg);
+        const oE = parseFloat(item.e);
+        const aN = parseFloat(item.node_deg);
+        const period = parseFloat(item.p_yr);
 
-// Función para recorrer el archivo JSON y crear los objetos Trajectory
-fetch("https://data.nasa.gov/resource/b67r-rgxc.json")
-  .then((response) => response.json())
-  .then((data) => {
-    const trajectories: Trajectory[] = [];
-    data.forEach((item: any) => {
-      const name = item.object;
-      const smA = (parseFloat(item.q_au_1) + parseFloat(item.q_au_2)) / 2;
-      const oI = parseFloat(item.i_deg);
-      const aP = parseFloat(item.w_deg);
-      const oE = parseFloat(item.e);
-      const aN = parseFloat(item.node_deg);
-      const period = parseFloat(item.p_yr);
+        const epoch_tdb = parseFloat(item.epoch_tdb);
+        const tp_tdb = parseFloat(item.tp_tdb);
+        const mAe = calculateMeanAnomaly(epoch_tdb, tp_tdb, period);
 
-      const epoch_tdb = parseFloat(item.epoch_tdb);
-      const tp_tdb = parseFloat(item.tp_tdb);
-      const mAe = calculateMeanAnomaly(epoch_tdb, tp_tdb, period);
+        const trajectory = new Trajectory(name, smA, oI, aP, oE, aN, mAe);
+        trajectories.push(trajectory);
+      });
 
-      const trajectory = new Trajectory(name, smA, oI, aP, oE, aN, mAe);
-      trajectories.push(trajectory);
+      // Guardar los asteroides en la lista global
+      asteroidLabels = trajectories;
+      console.log(asteroidLabels);
+    })
+    .catch((error) => console.error("Error al obtener los datos:", error));
+}
+
+// Variables de Three.js para la simulación
+let renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera, controls: OrbitControls;
+let asteroids: THREE.Group;
+
+// Función para inicializar Three.js
+function initScene(container: HTMLElement) {
+  // Crear el renderer
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  container.appendChild(renderer.domElement);
+
+  // Crear la escena
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+
+  // Configurar la cámara
+  camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+  camera.position.set(0, 50, 100);
+
+  // Añadir controles de órbita
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  // Añadir luz ambiental
+  const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+  scene.add(ambientLight);
+
+  // Crear el Sol
+  const sunGeometry = new THREE.SphereGeometry(5, 32, 32);
+  const sunMaterial = new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load(sunTexture) });
+  const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+  scene.add(sun);
+
+  // Crear un grupo para los asteroides
+  asteroids = new THREE.Group();
+  scene.add(asteroids);
+}
+
+// Función para animar los asteroides
+function animateAsteroids() {
+  let angle = 0;
+  const speed = 0.01;
+
+  function animate() {
+    requestAnimationFrame(animate);
+    angle += speed;
+
+    // Eliminar los asteroides anteriores en cada frame
+    while (asteroids.children.length) {
+      asteroids.remove(asteroids.children[0]);
+    }
+
+    // Calcular la posición de los asteroides en función de su órbita y propagación
+    asteroidLabels.forEach((asteroid) => {
+      const [x, y, z] = asteroid.propagate(angle); // Utilizar la función propagate de Trajectory
+      const mesh = createAsteroidMesh(asteroid);
+      mesh.position.set(x * 10 + 20, y * 10 + 20, z * 10 + 20); // Ajustar la escala y la posición fuera del Sol
+      asteroids.add(mesh);
     });
-    console.log(trajectories);
-  })
-  .catch((error) => console.error("Error al obtener los datos:", error));
 
-let heavenlyBodies: Trajectory[] = planets.concat(asteroidLabels);
-
-// Función para añadir un nodo
-function addNode(
-  identifier: string,
-  cR: number,
-  cG: number,
-  cB: number,
-  radius: number
-): boolean {
-  console.log(
-    `Adding node: ${identifier}, color: ${cR}, ${cG}, ${cB}, radius: ${radius}`
-  );
-  return false;
-}
-
-// Función para añadir un nodo hijo
-function addChildNode(
-  cID: string,
-  pID: string,
-  cR: number,
-  cG: number,
-  cB: number,
-  radius: number
-): boolean {
-  console.log(
-    `Adding child node: ${cID} under ${pID}, color: ${cR}, ${cG}, ${cB}, radius: ${radius}`
-  );
-  return false;
-}
-
-// Función para añadir una etiqueta
-function addLabel(identifier: string): void {
-  console.log(`Adding label: ${identifier}`);
-}
-
-// Función para calcular la anomalía excéntrica a partir de la verdadera
-function trueToEccentricAnomaly(e: number, f: number): number {
-  return 2 * Math.atan(Math.sqrt((1 - e) / (1 + e)) * Math.tan(f / 2));
-}
-
-// Función para calcular la anomalía excéntrica a partir de la anomalía media
-function meanToEccentricAnomaly(e: number, M: number): number {
-  let tol = 0.0001; // Tolerancia
-  let eAo = M; // Inicializar anomalía excéntrica con la anomalía media
-  let ratio = 1; // Inicializar el ratio mayor que la tolerancia
-  let eccentricAnomaly: number = 0;
-
-  while (Math.abs(ratio) > tol) {
-    let f_E = eAo - e * Math.sin(eAo) - M;
-    let f_Eprime = 1 - e * Math.cos(eAo);
-    ratio = f_E / f_Eprime;
-    if (Math.abs(ratio) > tol) {
-      eAo = eAo - ratio;
-    } else {
-      eccentricAnomaly = eAo;
-    }
+    controls.update();
+    renderer.render(scene, camera);
   }
-  return eccentricAnomaly;
+
+  animate();
 }
 
-// Función para calcular la anomalía verdadera a partir de la excéntrica
-function eccentricToTrueAnomaly(e: number, E: number): number {
-  return 2 * Math.atan(Math.sqrt((1 + e) / (1 - e)) * Math.tan(E / 2));
-}
-
-// Función para actualizar la posición
-function updatePosition(): void {
-  heavenlyBodies.forEach((body) => {
-    const currentPosition = body.propagate(body.trueAnomoly);
-    const [Xpos, Ypos, Zpos] = currentPosition;
-    console.log(
-      `Updating position of ${body.name}: X=${Xpos}, Y=${Ypos}, Z=${Zpos}`
-    );
-
-    const n = (2 * Math.PI) / (body.period * 365.25);
-    const eA = trueToEccentricAnomaly(body.oE, body.trueAnomoly);
-    const m0 = eA - body.oE * Math.sin(eA);
-    const deltaTime = simSpeed * n;
-    const mA = deltaTime + m0;
-
-    body.time += deltaTime;
-    const newEccentricAnomaly = meanToEccentricAnomaly(body.oE, mA);
-    body.trueAnomoly = eccentricToTrueAnomaly(body.oE, newEccentricAnomaly);
-  });
-
-  updateTheDate();
-}
-
-// Función para alternar visibilidad de órbitas
-function toggleOrbits(): void {
-  const button = document.getElementById("orbits") as HTMLInputElement;
-  solid = !solid;
-  button.value = solid ? "Orbits Off" : "Orbits On";
-  const opacity = solid ? 1 : 0;
-
-  heavenlyBodies.forEach((body) => {
-    const orbitMat = document.getElementById(body.name + "OrbitMat");
-    if (orbitMat) {
-      orbitMat.setAttribute("transparency", opacity.toString());
-    }
-  });
-}
-
-// Función para alternar visibilidad de etiquetas
-function toggleLabels(): void {
-  const button = document.getElementById("labels") as HTMLInputElement;
-  solidLabels = !solidLabels;
-  button.value = solidLabels ? "Labels Off" : "Labels On";
-  const opacity = solidLabels ? 1 : 0;
-
-  asteroidLabels.forEach((label) => {
-    const labelMat = document.getElementById(label.name + "LabelMat");
-    if (labelMat) {
-      labelMat.setAttribute("transparency", opacity.toString());
-    }
-  });
-}
-
-// Función para trazar las órbitas
-function traceOrbits(): void {
-  heavenlyBodies.forEach((body) => {
-    let orbitCoords = "";
-    let orbIndices = "";
-    let i = 0.0;
-    let j = 0;
-
-    while (i <= 2 * Math.PI) {
-      const orbPos = body.propagate(i);
-      orbitCoords += `${orbPos[0].toFixed(2)} ${orbPos[1].toFixed(
-        2
-      )} ${orbPos[2].toFixed(2)} `;
-      orbIndices += `${j} `;
-      i += 0.0785;
-      j += 1;
-    }
-    orbIndices += "-1";
-
-    const s = document.createElement("Shape");
-    s.setAttribute("id", body.name + "Orbit");
-
-    const app = document.createElement("Appearance");
-    const mat = document.createElement("Material");
-    const omat = document.getElementById(body.name + "Mat");
-    const oMatC = omat?.getAttribute("diffuseColor") || "0 0 0";
-    mat.setAttribute("emissiveColor", oMatC);
-    mat.setAttribute("id", body.name + "OrbitMat");
-    app.appendChild(mat);
-    s.appendChild(app);
-
-    const line = document.createElement("IndexedLineSet");
-    line.setAttribute("coordIndex", orbIndices);
-    const coords = document.createElement("Coordinate");
-    coords.setAttribute("point", orbitCoords);
-    line.appendChild(coords);
-
-    s.appendChild(line);
-    const ot = document.getElementById("theSun");
-    ot?.appendChild(s);
-  });
-}
-
-// Función para actualizar la fecha simulada
-function updateTheDate(): void {
-  epoch.setTime(epoch.getTime() + simSpeed * 24 * 3600000);
-  const modelDate = document.getElementById("modelDate");
-  if (modelDate) {
-    modelDate.textContent = `${
-      epoch.getMonth() + 1
-    }-${epoch.getDate()}-${epoch.getFullYear()}`;
-  }
-}
-
-// Función principal para iniciar la actualización
-function startUpdate(): void {
-  heavenlyBodies.forEach((body) => {
-    if (body.name === "theMoon") {
-      addChildNode(body.name, "theEarth", 0.7, 0.7, 0.7, 0.06);
-    } else {
-      addNode(body.name, 0.3, 0.3, 0.3, 0.05);
-    }
-  });
-
-  asteroidLabels.forEach((label) => addLabel(label.name));
-
-  heavenlyBodies.forEach((body) => {
-    const n = (2 * Math.PI) / (body.period * 365.25);
-    body.time = body.epochMeanAnomaly / n;
-    const eccAnom = meanToEccentricAnomaly(body.oE, body.epochMeanAnomaly);
-    body.trueAnomoly = eccentricToTrueAnomaly(body.oE, eccAnom);
-  });
-
-  traceOrbits();
-  setInterval(updatePosition, 50);
-}
-
-// Función para leer el valor del control deslizante
-function showValue(newValue: number): void {
-  simSpeed = newValue * 0.01;
+// Crear la malla de un asteroide en Three.js
+function createAsteroidMesh(asteroid: Trajectory): THREE.Mesh {
+  const geometry = new THREE.SphereGeometry(0.5, 32, 32); // Usar geometría de esfera pequeña
+  const material = new THREE.MeshBasicMaterial({ color: 0x888888 }); // Usar un color gris estándar
+  return new THREE.Mesh(geometry, material);
 }
 
 export default defineComponent({
@@ -283,103 +157,25 @@ export default defineComponent({
     Planet,
   },
   setup() {
-    // Refs
-    const rendererContainer = ref<HTMLDivElement | null>(null);
+    const rendererContainer = ref<HTMLElement | null>(null);
 
-    // Variables de THREE.js
-    let renderer: THREE.WebGLRenderer,
-      scene: THREE.Scene,
-      camera: THREE.PerspectiveCamera,
-      orbit: OrbitControls;
-    let sun: THREE.Mesh;
-
-    // Función para inicializar la escena
-    const init = () => {
-      // Crear el renderer y añadirlo al contenedor
-      renderer = new THREE.WebGLRenderer();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      rendererContainer.value?.appendChild(renderer.domElement);
-
-      // Crear la escena
-      scene = new THREE.Scene();
-
-      // Configurar la cámara
-      camera = new THREE.PerspectiveCamera(
-        45,
-        window.innerWidth / window.innerHeight,
-        0.1,
-        1000
-      );
-      camera.position.set(-90, 140, 140);
-
-      // Controles de órbita
-      orbit = new OrbitControls(camera, renderer.domElement);
-      orbit.update();
-
-      // Añadir luz ambiental
-      const ambientLight = new THREE.AmbientLight(0x333333);
-      scene.add(ambientLight);
-
-      const cubeTextureLoader = new THREE.CubeTextureLoader();
-      scene.background = cubeTextureLoader.load([
-        starsTexture,
-        starsTexture,
-        starsTexture,
-        starsTexture,
-        starsTexture,
-        starsTexture,
-      ]);
-
-      // Cargar textura y crear el Sol
-      const textureLoader = new THREE.TextureLoader();
-      const sunGeo = new THREE.SphereGeometry(16, 30, 30);
-      const sunMat = new THREE.MeshBasicMaterial({
-        map: textureLoader.load(sunTexture),
-      });
-      sun = new THREE.Mesh(sunGeo, sunMat);
-      scene.add(sun);
-
-      // Añadir la luz del Sol
-      const pointLight = new THREE.PointLight(0xffffff, 2, 300);
-      scene.add(pointLight);
-    };
-
-    // Función de animación
-    const animate = () => {
-      // Rotación del Sol
-      sun.rotateY(0.004);
-
-      // Renderizar la escena
-      renderer.render(scene, camera);
-      requestAnimationFrame(animate);
-    };
-
-    // Inicializar escena y animación cuando el componente esté montado
     onMounted(() => {
-      init();
-      animate();
-
-      // Ajustar el tamaño del canvas cuando se redimensiona la ventana
-      window.addEventListener("resize", () => {
-        if (camera) {
-          camera.aspect = window.innerWidth / window.innerHeight;
-          camera.updateProjectionMatrix();
-        }
-        if (renderer) {
-          renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-      });
+      if (rendererContainer.value) {
+        initScene(rendererContainer.value); // Inicializa la escena Three.js
+        fetchAsteroidsFromAPI(); // Cargar los asteroides de la API
+        animateAsteroids(); // Iniciar la animación de los asteroides
+      }
     });
 
-    return { rendererContainer, mercury, venus }; // Retornar el contenedor para su uso en el template
+    return { rendererContainer, mercury, venus };
   },
 });
 </script>
 
-<style>
-/* Ajuste de la vista para que ocupe toda la pantalla */
+<style scoped>
 .renderer-container {
   width: 100%;
   height: 100vh;
+  display: block;
 }
 </style>
