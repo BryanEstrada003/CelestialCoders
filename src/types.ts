@@ -4,4 +4,5 @@ export interface PlanetData {
     size: number;
     texture: string;
     rotationSpeed: number;
+    orbitSpeed: number;
 }
