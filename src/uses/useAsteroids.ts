@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { ref } from 'vue';
 import Trajectory from '../components/Trajectory.ts';
 
 // Crear un grupo para los asteroides
@@ -40,7 +39,7 @@ async function fetchAsteroids() {
 }
 
 
-let timeDelta = 0; // Variable de tiempo inicial
+// let timeDelta = 0; // Variable de tiempo inicial
 
 function updateAsteroids(timeDelta: number) {
     // Limpiar los asteroides anteriores
@@ -51,7 +50,7 @@ function updateAsteroids(timeDelta: number) {
     // Añadir los asteroides con nuevas posiciones
     asteroidLabels.forEach((asteroid) => {
         const [x, y, z] = asteroid.propagate(timeDelta); // Propagar las posiciones en función del timeDelta
-        const mesh = createAsteroidMesh(asteroid);
+        const mesh = createAsteroidMesh();
 
         // Ajustar la escala para alejar los asteroides del Sol
         mesh.position.set(x * 100, y * 100, z * 100); // Escalar para mantener proporciones
@@ -60,11 +59,17 @@ function updateAsteroids(timeDelta: number) {
 }
 
 // Crear la malla de un asteroide
-function createAsteroidMesh(asteroid: Trajectory): THREE.Mesh {
-    const geometry = new THREE.SphereGeometry(0.5, 32, 32); // Tamaño pequeño
-    const material = new THREE.MeshBasicMaterial({ color: 0x888888 }); // Color gris
+function createAsteroidMesh(): THREE.Mesh {
+    const geometry = new THREE.SphereGeometry(1.6, 32, 32); // Tamaño pequeño
+    const material = new THREE.MeshPhongMaterial({
+        color: 0x888888,  // Color gris
+        shininess: 50,    // Hace que el asteroide brille más
+        specular: 0xaaaaaa,  // Añade un poco de brillo especular (reflejo)
+    });
     return new THREE.Mesh(geometry, material);
 }
+
+
 
 // Función auxiliar para calcular la anomalía media
 function calculateMeanAnomaly(epoch_tdb: number, tp_tdb: number, p_yr: number): number {
