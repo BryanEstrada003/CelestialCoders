@@ -1,6 +1,6 @@
-import {ref, Ref} from 'vue';
+import { ref, Ref } from 'vue';
 import * as THREE from 'three';
-import {PlanetData} from '../types';
+import { PlanetData } from '../types';
 import mercury from '../assets/mercury.jpg';
 import venus from '../assets/venus.jpg';
 import jupiter from '../assets/jupiter.jpg';
@@ -22,25 +22,23 @@ export function usePlanets() {
         {name: 'Neptune', position: [200, 0, 0], size: 7, texture: neptune, rotationSpeed: 0.032, orbitSpeed: 0.11}
     ]);
 
-    const updatePlanets = (planetsData: PlanetData[], scene: THREE.Scene) => {
-        const currentTime = Date.now(); // Tiempo actual para todos los planetas
-
+    // Función para actualizar los planetas basados en timeDelta
+    const updatePlanets = (planetsData: PlanetData[], scene: THREE.Scene, timeDelta: number) => {
         planetsData.forEach((planet, index) => {
             const planetMesh = scene.getObjectByName(planet.name) as THREE.Mesh;
             if (planetMesh) {
-                // Añadir un offset basado en el índice para evitar que todos se sincronicen igual
-                const timeOffset = index * 100; // Ajusta el offset si es necesario
+                // Usamos timeDelta en lugar de Date.now() para controlar la órbita
+                const orbitAngle = timeDelta * planet.orbitSpeed; // Ajustar la velocidad de órbita
 
-                // Rotación alrededor del sol
-                planetMesh.position.x = Math.cos((currentTime + timeOffset) * 0.001 * planet.orbitSpeed) * planet.position[0];
-                planetMesh.position.z = Math.sin((currentTime + timeOffset) * 0.001 * planet.orbitSpeed) * planet.position[0];
+                // Actualizamos la posición orbital en función del ángulo calculado
+                planetMesh.position.x = Math.cos(orbitAngle) * planet.position[0];
+                planetMesh.position.z = Math.sin(orbitAngle) * planet.position[0];
 
-                // Autogiro del planeta
-                planetMesh.rotation.y += planet.rotationSpeed;
+                // Autogiro del planeta (rotación sobre su propio eje)
+                planetMesh.rotation.y += planet.rotationSpeed; // Rotación independiente del control de tiempo
             }
         });
     };
 
-
-    return {planets, updatePlanets};
+    return { planets, updatePlanets };
 }

@@ -42,9 +42,7 @@ async function fetchAsteroids() {
 
 let timeDelta = 0; // Variable de tiempo inicial
 
-function updateAsteroids() {
-    timeDelta += 0.001; // Incrementar más lentamente el tiempo
-
+function updateAsteroids(timeDelta: number) {
     // Limpiar los asteroides anteriores
     while (asteroids.children.length) {
         asteroids.remove(asteroids.children[0]);
@@ -52,16 +50,14 @@ function updateAsteroids() {
 
     // Añadir los asteroides con nuevas posiciones
     asteroidLabels.forEach((asteroid) => {
-        const [x, y, z] = asteroid.propagate(timeDelta); // Propagar las posiciones en función del tiempo
+        const [x, y, z] = asteroid.propagate(timeDelta); // Propagar las posiciones en función del timeDelta
         const mesh = createAsteroidMesh(asteroid);
 
-        // Mantener el factor de escala ajustado
-        mesh.position.set(x * 50, y * 50, z * 50); // Ajustar la posición de los asteroides
+        // Ajustar la escala para alejar los asteroides del Sol
+        mesh.position.set(x * 100, y * 100, z * 100); // Escalar para mantener proporciones
         asteroids.add(mesh); // Añadir la malla del asteroide al grupo
     });
 }
-
-
 
 // Crear la malla de un asteroide
 function createAsteroidMesh(asteroid: Trajectory): THREE.Mesh {
