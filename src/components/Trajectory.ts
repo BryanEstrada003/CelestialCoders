@@ -1,16 +1,15 @@
-/// Definición de la clase Trajectory
 class Trajectory {
   name: string;
-  smA: number;
-  oI: number;
-  aP: number;
-  oE: number;
-  aN: number;
-  period: number;
-  epochMeanAnomaly: number;
-  trueAnomoly: number;
-  position: [number, number, number];
-  time: number;
+  smA: number; // Semi major axis
+  oI: number; // Orbital inclination
+  aP: number; // Argument of Perigee
+  oE: number; // Orbital eccentricity
+  aN: number; // Ascending node
+  period: number; // Orbital period (sidereal)
+  epochMeanAnomaly: number; // Mean anomaly at epoch
+  trueAnomaly: number; // True anomaly (initial value at 0)
+  position: [number, number, number]; // Position in 3D space
+  time: number; // Time passed (to track progression)
 
   constructor(
     name: string,
@@ -21,27 +20,52 @@ class Trajectory {
     aN: number,
     idereal: number
   ) {
-    this.name = name; // name the object
-    this.smA = smA; // semi major axis
-    this.oI = oI * 0.01745329; // orbital inclination --> convert degrees to radians
-    this.aP = aP * 0.01745329; // argument of Perigee --> convert degrees to radians
-    this.oE = oE; // orbital eccentricity
-    this.aN = aN * 0.01745329; // ascending node --> convert degrees to radians
-    this.period = idereal; // siderial period as a multiple of Earth's orbital period
-    this.epochMeanAnomaly = idereal * 0.01745329; // mean anomaly at epoch
-    this.trueAnomoly = 0; // initialize to mean anomaly at epoch
-    this.position = [0, 0, 0];
-    this.time = 0;
+    this.name = name;
+    this.smA = smA; // Semi major axis
+    this.oI = oI * (Math.PI / 180); // Orbital inclination in radians
+    this.aP = aP * (Math.PI / 180); // Argument of Perigee in radians
+    this.oE = oE; // Orbital eccentricity
+    this.aN = aN * (Math.PI / 180); // Ascending node in radians
+    this.period = idereal; // Orbital period in years
+    this.epochMeanAnomaly = idereal * (Math.PI / 180); // Mean anomaly at epoch
+    this.trueAnomaly = 0; // Initial true anomaly (to be updated)
+    this.position = [0, 0, 0]; // Initial position
+    this.time = 0; // Time initialized at 0
   }
 
-  // Propagación de la trayectoria
-  propagate(uA: number): [number, number, number] {
-    const pos: [number, number, number] = [0, 0, 0];
-    const theta = uA; // Update true anomaly
-    const sLR = this.smA * Math.pow(1 - this.oE, 2); // Compute Semi-Latus Rectum
-    const r = sLR / (1 + this.oE * Math.cos(theta)); // Compute radial distance
+  // Function to calculate the eccentric anomaly (E) using Kepler's equation
+  calculateEccentricAnomaly(M: number, e: number, tolerance: number = 1e-6): number {
+    let E = M;
+    let delta = 1;
+    while (delta > tolerance) {
+      const newE = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+      delta = Math.abs(newE - E);
+      E = newE;
+    }
+    return E;
+  }
 
-    // Compute position coordinates
+  // Function to propagate the position based on time (in years)
+  propagate(timeDelta: number): [number, number, number] {
+    const pos: [number, number, number] = [0, 0, 0];
+
+    // Update mean anomaly (M) with timeDelta
+    const M = this.epochMeanAnomaly + ((2 * Math.PI / this.period) * timeDelta);
+
+    // Calculate the eccentric anomaly (E) from the mean anomaly (M)
+    const E = this.calculateEccentricAnomaly(M, this.oE);
+
+    // Calculate the true anomaly (theta) from the eccentric anomaly (E)
+    const theta = 2 * Math.atan2(
+      Math.sqrt(1 + this.oE) * Math.sin(E / 2),
+      Math.sqrt(1 - this.oE) * Math.cos(E / 2)
+    );
+
+    // Calculate the radial distance (r) using the true anomaly (theta)
+    const sLR = this.smA * (1 - Math.pow(this.oE, 2)); // Semi-Latus Rectum
+    const r = sLR / (1 + this.oE * Math.cos(theta)); // Radial distance
+
+    // Calculate the 3D position using orbital parameters and true anomaly
     pos[0] =
       r *
       (Math.cos(this.aP + theta) * Math.cos(this.aN) -

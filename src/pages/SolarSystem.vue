@@ -1,7 +1,10 @@
 <template>
   <div ref="rendererContainer" class="renderer-container">
-    <Planet :position="28" :size="3.2" :texture="mercury" />
-    <Planet :position="44" :size="5.8" :texture="venus" />
+    <Planet
+        v-for="planet in planets"
+        :key="planet.name"
+        :planetData="planet"
+    />
   </div>
 </template>
 
