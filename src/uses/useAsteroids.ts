@@ -9,7 +9,9 @@ let asteroidOrbitLines: THREE.Line[] = []; // Almacenamos las líneas de las ór
 // Función para cargar asteroides desde la API y crear las órbitas
 async function fetchAsteroids(scene: THREE.Scene) {
   try {
-    const response = await fetch("https://data.nasa.gov/resource/b67r-rgxc.json");
+    const response = await fetch(
+      "https://data.nasa.gov/resource/b67r-rgxc.json"
+    );
     const data = await response.json();
     const trajectories: Trajectory[] = [];
 
@@ -28,17 +30,27 @@ async function fetchAsteroids(scene: THREE.Scene) {
       const moid_au = parseFloat(item.moid_au);
       const q_au_1 = parseFloat(item.q_au_1);
 
-      // Determinar etiqueta (NEO, NEC, PHA)
+      // Determinar etiqueta (NEO, NEC, PHA, Cometa, Asteroide)
       let label = "Unknown";
-      if (moid_au < 0.3) {
-        label = "NEO"; // Near-Earth Object
+      const isComet = item.object.includes("P") || item.object.includes("C"); // Cometas usualmente contienen P o C en su nombre
+
+      if (isComet) {
+        if (q_au_1 < 1.3) {
+          label = "NEC"; // Near-Earth Comet
+        } else {
+          label = "Comet"; // Cometa regular
+        }
+      } else {
+        // Es un asteroide, clasificar según moid_au
+        if (moid_au < 0.05) {
+          label = "PHA"; // Potentially Hazardous Asteroid
+        } else if (moid_au < 0.3) {
+          label = "NEO"; // Near-Earth Object
+        } else {
+          label = "Asteroid"; // Asteroide regular
+        }
       }
-      if (moid_au < 0.05) {
-        label = "PHA"; // Potentially Hazardous Asteroid
-      }
-      if (q_au_1 < 1.3 && item.object.includes("P")) {
-        label = "NEC"; // Near-Earth Comet
-      }
+
       console.log("Label:", label);
       const trajectory = new Trajectory(name, smA, oI, aP, oE, aN, mAe, label);
       trajectories.push(trajectory);
@@ -121,56 +133,62 @@ function calculateMeanAnomaly(
 }
 
 // Función para actualizar asteroides y sus órbitas
-function updateAsteroids(timeDelta: number, selectedType: string, showOrbits: boolean, scene: THREE.Scene) {
-    // Eliminar los asteroides previos
-    while (asteroids.children.length) {
-        asteroids.remove(asteroids.children[0]);
-    }
+function updateAsteroids(
+  timeDelta: number,
+  selectedType: string,
+  showOrbits: boolean,
+  scene: THREE.Scene
+) {
+  // Eliminar los asteroides previos
+  while (asteroids.children.length) {
+    asteroids.remove(asteroids.children[0]);
+  }
 
-    // Eliminar las órbitas previas si están activas
-    if (!showOrbits) {
-        asteroidOrbitLines.forEach(line => {
-            scene.remove(line);
-        });
-        asteroidOrbitLines = [];
-    }
-
-    asteroidLabels.forEach((asteroid) => {
-        if (selectedType === "ALL" || asteroid.label === selectedType) {
-            const [x, y, z] = asteroid.propagate(timeDelta);
-            const mesh = createAsteroidMesh();
-            mesh.position.set(x * 100, y * 100, z * 100);
-            asteroids.add(mesh);
-
-            if (showOrbits) {
-                // Crear y añadir la órbita solo si showOrbits es true
-                const orbitLine = createAsteroidOrbitLine(asteroid);
-                scene.add(orbitLine);
-                asteroidOrbitLines.push(orbitLine); // Guardar la línea para removerla después si es necesario
-            }
-        }
+  // Eliminar las órbitas previas si están activas
+  if (!showOrbits) {
+    asteroidOrbitLines.forEach((line) => {
+      scene.remove(line);
     });
+    asteroidOrbitLines = [];
+  }
 
-    // Añadir el grupo de asteroides a la escena
-    scene.add(asteroids);
+  asteroidLabels.forEach((asteroid) => {
+    if (selectedType === "ALL" || asteroid.label === selectedType) {
+      const [x, y, z] = asteroid.propagate(timeDelta);
+      const mesh = createAsteroidMesh();
+      mesh.position.set(x * 100, y * 100, z * 100);
+      asteroids.add(mesh);
+
+      if (showOrbits) {
+        // Crear y añadir la órbita solo si showOrbits es true
+        const orbitLine = createAsteroidOrbitLine(asteroid);
+        scene.add(orbitLine);
+        asteroidOrbitLines.push(orbitLine); // Guardar la línea para removerla después si es necesario
+      }
+    }
+  });
+
+  // Añadir el grupo de asteroides a la escena
+  scene.add(asteroids);
 }
 
 // Función para crear la órbita de un asteroide
 function createAsteroidOrbitLine(asteroid: Trajectory): THREE.Line {
-    const points = [];
-    const segments = 100; // Cantidad de segmentos para la órbita
+  const points = [];
+  const segments = 100; // Cantidad de segmentos para la órbita
 
-    for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        const position = asteroid.propagate(angle);
-        points.push(new THREE.Vector3(position[0] * 100, position[1] * 100, position[2] * 100)); // Escalado
-    }
+  for (let i = 0; i <= segments; i++) {
+    const angle = (i / segments) * Math.PI * 2;
+    const position = asteroid.propagate(angle);
+    points.push(
+      new THREE.Vector3(position[0] * 100, position[1] * 100, position[2] * 100)
+    ); // Escalado
+  }
 
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({ color: 0x888888 });
-    return new THREE.Line(geometry, material);
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const material = new THREE.LineBasicMaterial({ color: 0x888888 });
+  return new THREE.Line(geometry, material);
 }
-
 
 export function useAsteroids() {
   return {
