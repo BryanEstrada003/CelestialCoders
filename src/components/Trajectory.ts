@@ -1,15 +1,16 @@
 class Trajectory {
   name: string;
-  smA: number; // Semi major axis
-  oI: number; // Orbital inclination
-  aP: number; // Argument of Perigee
-  oE: number; // Orbital eccentricity
-  aN: number; // Ascending node
-  period: number; // Orbital period (sidereal)
-  epochMeanAnomaly: number; // Mean anomaly at epoch
-  trueAnomaly: number; // True anomaly (initial value at 0)
-  position: [number, number, number]; // Position in 3D space
-  time: number; // Time passed (to track progression)
+  smA: number;
+  oI: number;
+  aP: number;
+  oE: number;
+  aN: number;
+  period: number;
+  epochMeanAnomaly: number;
+  trueAnomaly: number;
+  position: [number, number, number];
+  time: number;
+  label: string; // Nueva propiedad para label
 
   constructor(
     name: string,
@@ -18,19 +19,21 @@ class Trajectory {
     aP: number,
     oE: number,
     aN: number,
-    idereal: number
+    idereal: number,
+    label: string // Añadimos label al constructor
   ) {
     this.name = name;
-    this.smA = smA; // Semi major axis
-    this.oI = oI * (Math.PI / 180); // Orbital inclination in radians
-    this.aP = aP * (Math.PI / 180); // Argument of Perigee in radians
-    this.oE = oE; // Orbital eccentricity
-    this.aN = aN * (Math.PI / 180); // Ascending node in radians
-    this.period = idereal; // Orbital period in years
-    this.epochMeanAnomaly = idereal * (Math.PI / 180); // Mean anomaly at epoch
-    this.trueAnomaly = 0; // Initial true anomaly (to be updated)
-    this.position = [0, 0, 0]; // Initial position
-    this.time = 0; // Time initialized at 0
+    this.smA = smA;
+    this.oI = oI * (Math.PI / 180);
+    this.aP = aP * (Math.PI / 180);
+    this.oE = oE;
+    this.aN = aN * (Math.PI / 180);
+    this.period = idereal;
+    this.epochMeanAnomaly = idereal * (Math.PI / 180);
+    this.trueAnomaly = 0;
+    this.position = [0, 0, 0];
+    this.time = 0;
+    this.label = label; // Guardamos el label
   }
 
   // Function to calculate the eccentric anomaly (E) using Kepler's equation

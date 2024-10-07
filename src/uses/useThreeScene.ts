@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import starsTexture from '../assets/stars.jpg';
 
+
 export function useThreeScene() {
     let scene: THREE.Scene;
     let camera: THREE.PerspectiveCamera;
