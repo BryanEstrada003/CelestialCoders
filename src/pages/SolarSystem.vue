@@ -47,7 +47,7 @@ export default defineComponent({
   setup() {
     const rendererContainer = ref<HTMLElement | null>(null);
     const speed = ref(1); // Velocidad del tiempo
-    const selectedAsteroidType = ref("ALL"); // Tipo de asteroide seleccionado (por defecto todos)
+    const selectedAsteroidType = ref("Asteroid"); // Tipo de asteroide seleccionado (por defecto todos)
     const showOrbits = ref(true); // Visibilidad de las órbitas
 
     // Composables de planetas, asteroides y la escena
