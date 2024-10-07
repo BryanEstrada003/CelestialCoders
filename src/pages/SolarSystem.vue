@@ -4,7 +4,7 @@
 
     <!-- Control deslizante para ajustar la velocidad -->
     <div class="controls">
-      <label for="speedControl">Velocidad: {{ speed }}x</label>
+      <label for="speedControl">Speed: {{ speed }}x</label>
       <input
         type="range"
         id="speedControl"
@@ -15,17 +15,17 @@
       />
 
       <!-- Nuevo control para seleccionar el tipo de asteroide -->
-      <label for="asteroidTypeControl">Mostrar tipo de asteroide:</label>
+      <label for="asteroidTypeControl">Show asteroid type:</label>
       <select id="asteroidTypeControl" v-model="selectedAsteroidType">
         <option :value="'NEC'">NEC (Near-Earth Comet)</option>
-        <option :value="'Comet'">Cometa</option>
+        <option :value="'Comet'">Comet</option>
         <option :value="'PHA'">PHA (Potentially Hazardous Asteroid)</option>
         <option :value="'NEO'">NEO (Near-Earth Object)</option>
-        <option :value="'Asteroid'">Asteroide</option>
+        <option :value="'Asteroid'">Asteroid</option>
       </select>
 
       <!-- Control para activar/desactivar la visibilidad de las órbitas -->
-      <label for="orbitVisibilityControl">Mostrar órbitas:</label>
+      <label for="orbitVisibilityControl">Show orbits:</label>
       <input type="checkbox" id="orbitVisibilityControl" v-model="showOrbits" />
     </div>
   </div>
