@@ -5,8 +5,8 @@ import Trajectory from '../components/Trajectory.ts';
 const asteroids = new THREE.Group();
 let asteroidLabels: Trajectory[] = []; // Aquí guardamos las trayectorias
 
-// Función para cargar asteroides desde la API
-async function fetchAsteroids() {
+// Función para cargar asteroides desde la API y crear las órbitas
+async function fetchAsteroids(scene: THREE.Scene) {
     try {
         const response = await fetch("https://data.nasa.gov/resource/b67r-rgxc.json");
         const data = await response.json();
@@ -31,6 +31,23 @@ async function fetchAsteroids() {
 
         asteroidLabels = trajectories; // Guardar las trayectorias en la lista global
 
+        // Dibujar órbitas de los asteroides
+        asteroidLabels.forEach((asteroid) => {
+            const points = [];
+            const segments = 100; // Cantidad de segmentos para la órbita
+
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+                const position = asteroid.propagate(angle);
+                points.push(new THREE.Vector3(position[0] * 100, position[1] * 100, position[2] * 100)); // Escalado
+            }
+
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ color: 0x888888 });
+            const orbitLine = new THREE.Line(geometry, material);
+            scene.add(orbitLine); // Añadir la órbita de cada asteroide
+        });
+
         // Añadir el grupo de asteroides a la escena después de cargar los datos
         return asteroids; // Retorna el grupo de asteroides
     } catch (error) {
@@ -38,9 +55,7 @@ async function fetchAsteroids() {
     }
 }
 
-
-// let timeDelta = 0; // Variable de tiempo inicial
-
+// Función para actualizar la posición de los asteroides
 function updateAsteroids(timeDelta: number) {
     // Limpiar los asteroides anteriores
     while (asteroids.children.length) {
@@ -68,8 +83,6 @@ function createAsteroidMesh(): THREE.Mesh {
     });
     return new THREE.Mesh(geometry, material);
 }
-
-
 
 // Función auxiliar para calcular la anomalía media
 function calculateMeanAnomaly(epoch_tdb: number, tp_tdb: number, p_yr: number): number {
