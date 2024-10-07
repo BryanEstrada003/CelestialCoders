@@ -86,13 +86,12 @@ export default defineComponent({
 <style scoped>
 .renderer-container {
   width: 100%;
-  height: 100vh;
-  position: relative;
+  height: calc(100vh - 100px);
 }
 
 .controls {
   position: absolute;
-  bottom: 20px;
+  bottom: 50px;
   left: 20px;
   background-color: rgba(255, 255, 255, 0.7);
   padding: 10px;
