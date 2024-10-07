@@ -17,11 +17,11 @@
       <!-- Nuevo control para seleccionar el tipo de asteroide -->
       <label for="asteroidTypeControl">Mostrar tipo de asteroide:</label>
       <select id="asteroidTypeControl" v-model="selectedAsteroidType">
-        <option value="NEC">NEC (Near-Earth Comet)</option>
-        <option value="Comet">Cometa</option>
-        <option value="PHA">PHA (Potentially Hazardous Asteroid)</option>
-        <option value="NEO">NEO (Near-Earth Object)</option>
-        <option value="Asteroid">Asteroide</option>
+        <option :value="'NEC'">NEC (Near-Earth Comet)</option>
+        <option :value="'Comet'">Cometa</option>
+        <option :value="'PHA'">PHA (Potentially Hazardous Asteroid)</option>
+        <option :value="'NEO'">NEO (Near-Earth Object)</option>
+        <option :value="'Asteroid'">Asteroide</option>
       </select>
 
       <!-- Control para activar/desactivar la visibilidad de las órbitas -->
@@ -55,7 +55,16 @@ export default defineComponent({
     const { planets, updatePlanets } = usePlanets();
     const { createSun, updateSun } = useSun();
     const { createPlanetMesh } = usePlanetMesh();
-    const { fetchAsteroids, updateAsteroids, asteroids } = useAsteroids();
+    const {
+      fetchAsteroids,
+      updateAsteroids,
+      asteroids,
+      necCount,
+      cometCount,
+      phaCount,
+      neoCount,
+      asteroidCount,
+    } = useAsteroids();
 
     // Arrays para almacenar las trayectorias
     const planetTrajectories = ref<{ [key: string]: THREE.Vector3[] }>({});
@@ -183,27 +192,12 @@ export default defineComponent({
       speed,
       selectedAsteroidType,
       showOrbits,
+      necCount,
+      cometCount,
+      phaCount,
+      neoCount,
+      asteroidCount,
     };
   },
 });
 </script>
-
-<style scoped>
-.renderer-container {
-  width: 100%;
-  height: calc(100vh - 100px);
-}
-
-.controls {
-  position: absolute;
-  bottom: 50px;
-  left: 20px;
-  background-color: rgba(255, 255, 255, 0.7);
-  padding: 10px;
-  border-radius: 10px;
-}
-
-#speedControl {
-  width: 200px;
-}
-</style>

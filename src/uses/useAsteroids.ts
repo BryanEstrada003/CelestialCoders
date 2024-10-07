@@ -5,16 +5,28 @@ import Trajectory from "../components/Trajectory.ts";
 const asteroids = new THREE.Group();
 let asteroidLabels: Trajectory[] = []; // Aquí guardamos las trayectorias
 let asteroidOrbitLines: THREE.Line[] = []; // Almacenamos las líneas de las órbitas de los asteroides
+// Definir contadores para cada categoría
+let necCount = 0;
+let cometCount = 0;
+let phaCount = 0;
+let neoCount = 0;
+let asteroidCount = 0;
+let unknownCount = 0;
 
 // Función para cargar asteroides desde la API y crear las órbitas
 async function fetchAsteroids(scene: THREE.Scene) {
   try {
-    const response = await fetch(
-      "https://data.nasa.gov/resource/b67r-rgxc.json"
-    );
+    // Reiniciar contadores antes de procesar nuevos datos
+    resetCounters();
+
+    const response = await fetch("https://data.nasa.gov/resource/b67r-rgxc.json");
     const data = await response.json();
     const trajectories: Trajectory[] = [];
 
+    // Crear una lista para almacenar los NECs filtrados
+    let necList: Trajectory[] = [];
+
+    // Clasificación de los asteroides y cometas
     data.forEach((item: any) => {
       const name = item.object;
       const smA = (parseFloat(item.q_au_1) + parseFloat(item.q_au_2)) / 2;
@@ -30,43 +42,58 @@ async function fetchAsteroids(scene: THREE.Scene) {
       const moid_au = parseFloat(item.moid_au);
       const q_au_1 = parseFloat(item.q_au_1);
 
-      // Determinar etiqueta (NEO, NEC, PHA, Cometa, Asteroide)
+      // Determinar la etiqueta
       let label = "Unknown";
-      const isComet = item.object.includes("P") || item.object.includes("C"); // Cometas usualmente contienen P o C en su nombre
+      const isComet = item.object.includes("P") || item.object.includes("C");
 
       if (isComet) {
         if (q_au_1 < 1.3) {
           label = "NEC"; // Near-Earth Comet
+          necCount++;
         } else {
           label = "Comet"; // Cometa regular
+          cometCount++;
         }
       } else {
-        // Es un asteroide, clasificar según moid_au
         if (moid_au < 0.05) {
           label = "PHA"; // Potentially Hazardous Asteroid
+          phaCount++;
         } else if (moid_au < 0.3) {
           label = "NEO"; // Near-Earth Object
+          neoCount++;
         } else {
           label = "Asteroid"; // Asteroide regular
+          asteroidCount++;
         }
       }
 
-      console.log("Label:", label);
       const trajectory = new Trajectory(name, smA, oI, aP, oE, aN, mAe, label);
-      trajectories.push(trajectory);
 
-      // Crear el asteroide
-      const mesh = createAsteroidMesh();
-
-      // Crear y añadir el sprite con la etiqueta
-      const labelSprite = createTextSprite(`${name} - ${label}`);
-      labelSprite.position.set(0, 1.6, 0); // Posición sobre el asteroide
-      mesh.add(labelSprite);
-
-      asteroids.add(mesh); // Añadir el asteroide a la escena
+      // Si es NEC, agregamos a la lista temporal de NECs
+      if (label === "NEC") {
+        necList.push(trajectory);
+      } else {
+        // Añadir el objeto directamente si no es NEC
+        trajectories.push(trajectory);
+      }
     });
 
+    // Filtrar los NECs y quedarnos solo con 10 o 20
+    const filteredNecs = necList.slice(0, 20); // Ajusta el número según lo que desees
+    necCount = filteredNecs.length; // Actualizar el contador de NECs
+
+    // Añadir los NECs filtrados a la lista final de trayectorias
+    trajectories.push(...filteredNecs);
+
     asteroidLabels = trajectories; // Guardar las trayectorias en la lista global
+
+    // Al final, imprimir el total de cada categoría
+    console.log(`Total NEC: ${necCount}`);
+    console.log(`Total Comet: ${cometCount}`);
+    console.log(`Total PHA: ${phaCount}`);
+    console.log(`Total NEO: ${neoCount}`);
+    console.log(`Total Asteroid: ${asteroidCount}`);
+    console.log(`Total Unknown: ${unknownCount}`);
 
     // Añadir el grupo de asteroides a la escena después de cargar los datos
     return asteroids; // Retorna el grupo de asteroides
@@ -75,35 +102,14 @@ async function fetchAsteroids(scene: THREE.Scene) {
   }
 }
 
-// Función para crear un Sprite con texto
-function createTextSprite(message: string): THREE.Sprite {
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-
-  // Configurar el tamaño del canvas y del texto
-  context.font = "Bold 24px Arial";
-  canvas.width = 256;
-  canvas.height = 128;
-
-  // Dibujar el fondo del texto
-  context.fillStyle = "rgba(255, 255, 255, 0.8)";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Dibujar el texto
-  context.fillStyle = "black";
-  context.fillText(message, 10, 40);
-
-  // Crear la textura a partir del canvas
-  const texture = new THREE.Texture(canvas);
-  texture.needsUpdate = true;
-
-  // Crear el material del sprite
-  const material = new THREE.SpriteMaterial({ map: texture });
-
-  // Crear el sprite y devolverlo
-  const sprite = new THREE.Sprite(material);
-  sprite.scale.set(10, 5, 1); // Ajustar el tamaño del sprite
-  return sprite;
+// Función para reiniciar los contadores
+function resetCounters() {
+  necCount = 0;
+  cometCount = 0;
+  phaCount = 0;
+  neoCount = 0;
+  asteroidCount = 0;
+  unknownCount = 0; // Si estás utilizando unknownCount
 }
 
 // Crear la malla de un asteroide
@@ -195,5 +201,11 @@ export function useAsteroids() {
     asteroids, // Grupo de asteroides que se añade a la escena
     fetchAsteroids, // Cargar asteroides desde la API
     updateAsteroids, // Actualizar asteroides en cada frame
+    necCount, // Contador de NEC
+    cometCount, // Contador de Cometas
+    phaCount, // Contador de PHA
+    neoCount, // Contador de NEO
+    asteroidCount, // Contador de Asteroides
+    unknownCount, // Contador de Unknown si lo usas
   };
 }
