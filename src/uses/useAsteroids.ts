@@ -15,7 +15,7 @@ async function fetchAsteroids(scene: THREE.Scene) {
     const data = await response.json();
     const trajectories: Trajectory[] = [];
 
-    data.slice(0, 100).forEach((item: any) => {
+    data.forEach((item: any) => {
       const name = item.object;
       const smA = (parseFloat(item.q_au_1) + parseFloat(item.q_au_2)) / 2;
       const oI = parseFloat(item.i_deg);

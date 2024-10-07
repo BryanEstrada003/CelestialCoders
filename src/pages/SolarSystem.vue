@@ -17,9 +17,11 @@
       <!-- Nuevo control para seleccionar el tipo de asteroide -->
       <label for="asteroidTypeControl">Mostrar tipo de asteroide:</label>
       <select id="asteroidTypeControl" v-model="selectedAsteroidType">
-        <option value="NEO">NEO (Near-Earth Object)</option>
         <option value="NEC">NEC (Near-Earth Comet)</option>
+        <option value="Comet">Cometa</option>
         <option value="PHA">PHA (Potentially Hazardous Asteroid)</option>
+        <option value="NEO">NEO (Near-Earth Object)</option>
+        <option value="Asteroid">Asteroide</option>
       </select>
 
       <!-- Control para activar/desactivar la visibilidad de las órbitas -->
@@ -39,26 +41,13 @@ import { usePlanetMesh } from "../uses/usePlanetMesh";
 import { useAsteroids } from "../uses/useAsteroids";
 import * as THREE from "three";
 
-import { Raycaster, Vector2 } from "three";
-
-const raycaster = new Raycaster();
-const mouse = new Vector2();
-
-// Función para manejar el movimiento del mouse
-function onMouseMove(event: MouseEvent) {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-}
-
-window.addEventListener("mousemove", onMouseMove);
-
 export default defineComponent({
   name: "SolarSystem",
   components: { Planet },
   setup() {
     const rendererContainer = ref<HTMLElement | null>(null);
     const speed = ref(1); // Velocidad del tiempo
-    const selectedAsteroidType = ref("NEO"); // Tipo de asteroide seleccionado
+    const selectedAsteroidType = ref("ALL"); // Tipo de asteroide seleccionado (por defecto todos)
     const showOrbits = ref(true); // Visibilidad de las órbitas
 
     // Composables de planetas, asteroides y la escena
@@ -133,7 +122,6 @@ export default defineComponent({
         let timeDelta = 0;
 
         // Ciclo de animación
-        // Ciclo de animación en SolarSystem.vue
         animate(() => {
           timeDelta += 0.05 * speed.value;
 
@@ -176,6 +164,12 @@ export default defineComponent({
           renderer.render(scene, camera);
         });
       }
+    });
+
+    // Watcher para cuando cambie el tipo de asteroide seleccionado
+    watch(selectedAsteroidType, () => {
+      // Actualizar los asteroides cuando cambia el tipo
+      updateAsteroids(0, selectedAsteroidType.value, showOrbits.value, scene);
     });
 
     // Verifica el cambio en el estado de las órbitas y vuelve a renderizar
